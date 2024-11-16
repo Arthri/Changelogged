@@ -1,0 +1,227 @@
+name: Create Releases from Pull Requests
+on:
+  workflow_call:
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  create-releases:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 2
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            *.slnf
+            src/**/*.csproj
+          sparse-checkout-cone-mode: false
+
+      - name: Gather changelogs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PULL_REQUEST_BODY: ${{ toJson(github.event.pull_request.body) }}
+          PULL_REQUEST_NUMBER: ${{ toJson(github.event.pull_request.number) }}
+          PULL_REQUEST_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          if ! project_names="$(grep -oP '(?<=release: ).+' <<< "$PULL_REQUEST_TITLE")" ; then
+            gh pr comment "$PULL_REQUEST_NUMBER" -b 'Invalid pull request title. Expected title in the format `release: {names}`'
+            exit 1
+          fi
+
+          REPOSITORY_ROOT="$PWD"
+          GITHUB_REPOSITORY_URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git"
+
+          for project_name in ${project_names//,/$'\n'}; do
+            echo "::group::Gathering changelogs for $project_name."
+            if ! cd "$REPOSITORY_ROOT/src/$project_name" > /dev/null ; then
+              echo '::error::Failed to find project.'
+              exit 1
+            fi
+
+            if ! project_version="$(dotnet msbuild -getProperty:Version)" ; then
+              echo '::error::Failed to get the project version.'
+              exit 1
+            fi
+
+            mkdir -p "$REPOSITORY_ROOT/artifacts/changelogs/$project_name" && cd $_
+            echo "$project_version" > './new_version.txt'
+
+
+
+            if ! repository_refs="$(git ls-remote --tags "$GITHUB_REPOSITORY_URL" "refs/tags/v/$project_name/*")" ; then
+              echo '::error::Failed to get the list of tags.'
+              exit 1
+            elif [[ -z $repository_refs ]] ; then
+              echo "The project has no associated tags. No changelog cutoff will be applied."
+            else
+              repository_tags="$(sed 's/^[a-fA-F0-9]\+[[:space:]]\+//gm' <<< "$repository_refs")"
+              project_tag="v/$project_name/$project_version"
+              project_tag_fully_qualified="refs/tags/$project_tag"
+              repository_tags_sorted="$(sort -V <<< "$repository_tags"$'\n'"$project_tag_fully_qualified")"
+
+              if ! context_tags="$(grep -B 1 -x -F "$project_tag_fully_qualified" <<< "$repository_tags_sorted")" || { tags_found="$(wc -l <<< "$context_tags")" && [[ $tags_found -eq 0 ]] ; } ; then
+                echo '::error::Failed to determine the preceding tags.'
+                exit 1
+              elif [[ $tags_found -eq 1 ]] ; then
+                echo "The project has no preceding tags at its current version. No changelog cutoff will be applied."
+              elif [[ $tags_found -eq 2 ]] ; then
+                preceding_tag="$(head -n1 <<< "$context_tags")"
+                if [[ $preceding_tag == $project_tag_fully_qualified ]] ; then
+                  echo '::error::'"$project_tag"' conflicts with an existing tag. Consider changing the project version.'
+                  exit 1
+                fi
+                echo "Using $preceding_tag's commit date as the changelog cutoff."
+
+          graphql_query_commit_date='query($name: String!, $owner: String!, $ref: String!) {
+            repository(owner: $owner, name: $name) {
+              ref(qualifiedName: $ref) {
+                target {
+                  ... on Commit {
+                    committedDate,
+                    oid
+                  }
+                }
+              }
+            }
+          }'
+                if preceding_tag_information="$(GH_REPO="$GITHUB_REPOSITORY" gh api graphql -F owner='{owner}' -F name='{repo}' -f ref="$preceding_tag" -F query=@- <<< "$graphql_query_commit_date")" && changelog_cutoff="$(jq -re '.data.repository.ref.target.committedDate' <<< "$preceding_tag_information")" ; then
+                  preceding_tag_target_oid="$(jq -re '.data.repository.ref.target.oid' <<< "$preceding_tag_information")"
+                  echo "Filtering out pull requests merged before $changelog_cutoff."
+                else
+                  ecbo '::error::Failed to get the commit date for '"$preceding_tag"'.'
+                  exit 1
+                fi
+              elif [[ $tags_found -gt 2 ]] ; then
+                echo '::error::'"$project_tag"' conflicts with an existing tag. Consider changing the project version.'
+                exit 1
+              else
+                echo 'Unexpected amount ('"$tags_found"') of preceding tags found.'
+                exit 1
+              fi
+            fi
+
+
+
+            if [[ -v preceding_tag_target_oid ]] ; then
+          graphql_query_preceding_tag_pull_requests='query($endCursor: String) {
+            search(type: ISSUE, first: 100, after: $endCursor, query: "repo:'"$GITHUB_REPOSITORY"' is:pr is:merged '"$preceding_tag_target_oid"'") {
+              nodes {
+                ... on PullRequest {
+                  number
+                }
+              }
+              pageInfo {
+                hasNextPage
+                endCursor
+              }
+            }
+          }'
+              preceding_tag_pull_request_numbers="$(gh api graphql --paginate --slurp -F query=@- <<< "$graphql_query_preceding_tag_pull_requests" | jq -c '[.[].data.search.nodes[].number]')"
+              if [[ $preceding_tag_pull_request_numbers != '[]' ]] ; then
+                echo 'Filtering out pull request associated with the preceding tag '"$(jq -r 'sort | map("#\(.)") | join(", ")' <<< "$preceding_tag_pull_request_numbers")."
+                if grep -qF ',' <<< "$preceding_tag_pull_request_numbers" ; then
+                  echo '::warning::Multiple pull requests found associated with the preceding tag.'
+                fi
+              fi
+            fi
+
+          graphql_query_pull_requests='query($endCursor: String) {
+            search(type: ISSUE, first: 100, after: $endCursor, query: "repo:'"$GITHUB_REPOSITORY"' is:pr is:merged base:master base:dev'"${changelog_cutoff:+ merged:>=$changelog_cutoff}"'") {
+              nodes {
+                ... on PullRequest {
+                  number
+                  body
+                }
+              }
+              pageInfo {
+                hasNextPage
+                endCursor
+              }
+            }
+          }'
+            pull_requests_json="$(gh api graphql --paginate --slurp -F query=@- <<< "$graphql_query_pull_requests")"
+            pull_requests="$(jq -c '[.[].data.search.nodes[]]' <<< "$pull_requests_json")"
+            echo "The changelog is based on pull request(s) $(jq -r '[.[].data.search.nodes[].number] + ['"$PULL_REQUEST_NUMBER"'] | sort | map("#\(.)") | join(", ")' <<< "$pull_requests_json")."
+
+
+
+            jq_arguments=(
+              '-cn'
+              '--argjson' 'array1' "$pull_requests"
+              '--argjson' 'array2' '[{"number": '"$PULL_REQUEST_NUMBER"', "body":'"$PULL_REQUEST_BODY"'}]'
+            )
+            jq_query='$array1 + $array2'
+
+            if [[ -v preceding_tag_pull_request_numbers ]] ; then
+              jq_arguments+=('--argjson' 'preceding_tag_pull_request_numbers' "$preceding_tag_pull_request_numbers")
+              jq_query='('"$jq_query"') | map(select(.number as $n | $preceding_tag_pull_request_numbers | index($n) == null))'
+            fi
+
+            jq "${jq_arguments[@]}" "$jq_query" > "./pull_requests.json"
+
+            echo '::endgroup::'
+          done
+
+      - name: Download Changelogged
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release download "v0.0.1" -p 'release.tar.gz' -O - -R "Arthri/Changelogged" | tar -xzf -
+
+      - name: Build release notes
+        run: |
+          shopt -s nullglob
+
+          REPOSITORY_ROOT="$PWD"
+          for project_artifacts_directory in $PWD/artifacts/changelogs/*/; do
+            project_name="$(basename $project_artifacts_directory)"
+            echo 'Building changelog for '"$project_name."
+            cd "$project_artifacts_directory"
+            PULL_REQUEST_BODIES="$(< pull_requests.json)" SOLUTION_FILTER="$REPOSITORY_ROOT/$project_name.slnf" "$REPOSITORY_ROOT/Changelogged" build
+          done
+
+      - name: Create or update release(s)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for project_artifacts_directory in ./artifacts/changelogs/*/; do
+            project_name="$(basename $project_artifacts_directory)"
+            project_version="$(< "$project_artifacts_directory/new_version.txt")"
+            release_tag="v/$project_name/$project_version"
+            echo '::group::Creating or updating release '"$release_tag."
+
+          graphql_query_release_draft='query($owner: String!, $name: String!, $tagName: String!) {
+            repository(owner: $owner, name: $name) {
+              release(tagName: $tagName) {
+                isDraft
+              }
+            }
+          }'
+
+            release_command='gh release edit'
+            if ! is_draft="$(gh api graphql -F owner='{owner}' -F name='{repo}' -f tagName="$release_tag" -F query=@- <<< "$graphql_query_release_draft" | jq -r '.data.repository.release.isDraft')" ; then
+              echo "::error::Failed to probe release status."
+              exit 1
+            elif [[ $is_draft == 'false' ]] ; then
+              echo "::error::A release with the same tag is already published."
+              exit 1
+            elif [[ $is_draft == 'null' ]] ; then
+              release_command='gh release create'
+            fi
+
+            $release_command $release_tag \
+              --title "$project_name v$project_version" \
+              --draft \
+              --latest \
+              --target "master" \
+              --notes-file - < "$project_artifacts_directory/changelog.md"
+
+            echo "::endgroup::"
+          done

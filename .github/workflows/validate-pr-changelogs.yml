@@ -1,0 +1,35 @@
+name: Validate Pull Requests' Changelogs
+on:
+  workflow_call:
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  validate-pr:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 2
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            *.sln
+          sparse-checkout-cone-mode: false
+
+      - name: Download Changelogged
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release download "v0.0.1" -p 'release.tar.gz' -O - -R "Arthri/Changelogged" | tar -xzf -
+
+      - name: Validate PR
+        env:
+          PULL_REQUEST_BODY: ${{ github.event.pull_request.body }}
+          PULL_REQUEST_MERGED: ${{ github.event.pull_request.merged }}
+        run: |
+          ./Changelogged validate

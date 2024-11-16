@@ -1,0 +1,14 @@
+name: Publish
+
+on:
+  release:
+    types:
+      - published
+
+jobs:
+  publish-release:
+    uses: Arthri/publish-dotnet/.github/workflows/publish-release.yml@v2
+    permissions:
+      contents: write
+    with:
+      build-arguments: -p:PublishAot=true

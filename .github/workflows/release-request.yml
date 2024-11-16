@@ -1,0 +1,18 @@
+name: Release Request
+
+on:
+  pull_request:
+    types:
+      - closed
+      - edited
+      - labeled
+      - opened
+      - unlabeled
+    branches:
+      - master
+
+jobs:
+  process:
+    permissions:
+      contents: write
+    uses: Arthri/release-request/.github/workflows/release-request.yml@v1

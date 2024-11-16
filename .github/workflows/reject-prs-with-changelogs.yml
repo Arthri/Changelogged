@@ -1,0 +1,33 @@
+name: Reject Pull Requests with Changelogs
+on:
+  workflow_call:
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  check-pr:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 2
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: Download Changelogged
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release download "v0.0.1" -p 'release.tar.gz' -O - -R "Arthri/Changelogged" | tar -xzf -
+
+      - name: Reject PRs with changelogs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PULL_REQUEST_BODY: ${{ github.event.pull_request.body }}
+          PULL_REQUEST_BRANCH: ${{ github.event.pull_request.base.ref }}
+          PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          if ./Changelogged haschangelog ; then
+            gh pr comment "$PULL_REQUEST_NUMBER" -b 'Changelogs are not supported on pull requests to the branch `'"$PULL_REQUEST_BRANCH"'`.' -R "$GITHUB_REPOSITORY"
+            exit 1
+          fi
