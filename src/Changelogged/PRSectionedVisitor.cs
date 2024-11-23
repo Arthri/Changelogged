@@ -10,12 +10,9 @@ internal class PRSectionedVisitor : PRVisitor
 
     protected void VisitSectionElement(MarkdownObject obj)
     {
-        if (_sections.Count > 0)
+        while (_sections.Count > 0 && IsSectionEnd(_sections.Peek().Heading, obj))
         {
-            while (IsSectionEnd(_sections.Peek().Heading, obj))
-            {
-                VisitSection(_sections.Pop());
-            }
+            VisitSection(_sections.Pop());
         }
 
         foreach (Section section in _sections)
