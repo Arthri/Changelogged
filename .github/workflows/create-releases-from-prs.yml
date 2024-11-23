@@ -30,6 +30,8 @@ jobs:
           PULL_REQUEST_NUMBER: ${{ toJson(github.event.pull_request.number) }}
           PULL_REQUEST_TITLE: ${{ github.event.pull_request.title }}
         run: |
+          shopt -s nullglob
+
           if ! project_names="$(grep -oP '(?<=release: ).+' <<< "$PULL_REQUEST_TITLE")" ; then
             gh pr comment "$PULL_REQUEST_NUMBER" -b 'Invalid pull request title. Expected title in the format `release: {names}`'
             exit 1
@@ -40,7 +42,15 @@ jobs:
 
           for project_name in ${project_names//,/$'\n'}; do
             echo "::group::Gathering changelogs for $project_name."
-            if ! cd "$REPOSITORY_ROOT/src/$project_name" > /dev/null ; then
+
+            possible_directories=("$REPOSITORY_ROOT"/src/*/"$project_name")
+            possible_directories_len="${#possible_directories[@]}"
+            if [[ $possible_directories_len -lt 1 ]] ; then
+              echo "::error::Multiple projects matched: ${possible_directories[@]}"
+            elif [[ $possible_directories_len -gt 1 ]] ; then
+              echo '::error::Failed to find project.'
+            fi
+            if ! cd "${possible_directories[0]}" ; then
               echo '::error::Failed to find project.'
               exit 1
             fi
