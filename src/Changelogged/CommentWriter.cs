@@ -22,7 +22,7 @@ internal sealed class CommentWriter : IDisposable
         {
             if (_inSection)
             {
-                _writer.Write("::endgroup::");
+                _writer.WriteLine("::endgroup::");
                 _inSection = false;
             }
 
@@ -60,7 +60,7 @@ internal sealed class CommentWriter : IDisposable
     private void WriteDebug(string message)
     {
         TryWriteSection();
-        Console.WriteLine(message);
+        Console.Write(message);
     }
 
     public void Debug(string message)
