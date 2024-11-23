@@ -60,7 +60,7 @@ internal sealed class CommentWriter : IDisposable
     private void WriteDebug(string message)
     {
         TryWriteSection();
-        Console.Write(message);
+        _writer.Write(message);
     }
 
     public void Debug(string message)
