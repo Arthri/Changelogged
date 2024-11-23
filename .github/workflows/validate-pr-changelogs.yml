@@ -25,7 +25,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release download "v0.0.1" -p 'release.tar.gz' -O - -R "Arthri/Changelogged" | tar -xzf -
+          gh release download "v1.0.2" -p 'release.tar.gz' -O - -R "Arthri/Changelogged" | tar -xzf -
 
       - name: Validate PR
         env:
