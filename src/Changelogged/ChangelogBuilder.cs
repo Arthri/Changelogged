@@ -1,4 +1,4 @@
-﻿using Markdig;
+using Markdig;
 using Markdig.Helpers;
 using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
@@ -142,7 +142,20 @@ internal sealed class ChangelogBuilder(string solutionFilter, CommentWriter comm
             }
 
             ReadOnlySpan<char> newContent = content[(indexOfColon + 1)..].TrimStart();
-            literal.Content = new StringSlice(literal.Content.Text, literal.Content.End - newContent.Length, literal.Content.End, literal.Content.NewLine);
+            literal.Content = new StringSlice(literal.Content.Text, literal.Content.End - newContent.Length, literal.Content.End, NewLine.LineFeed);
+
+            if (paragraphInline.LastChild is LineBreakInline lineBreak)
+            {
+                lineBreak.NewLine = NewLine.LineFeed;
+            }
+            else
+            {
+                _ = paragraphInline.AppendChild(new LineBreakInline
+                {
+                    NewLine = NewLine.LineFeed,
+                });
+            }
+
             item.LinesBefore = null;
             item.LinesAfter = null;
             paragraph.LinesBefore = null;
