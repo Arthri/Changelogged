@@ -142,7 +142,7 @@ internal sealed class ChangelogBuilder(string solutionFilter, CommentWriter comm
             }
 
             ReadOnlySpan<char> newContent = content[(indexOfColon + 1)..].TrimStart();
-            literal.Content = new StringSlice(literal.Content.Text, literal.Content.End - newContent.Length, literal.Content.End, NewLine.LineFeed);
+            literal.Content = new StringSlice(literal.Content.Text, literal.Content.End - newContent.Length, literal.Content.End, literal.Content.NewLine);
 
             if (paragraphInline.LastChild is LineBreakInline lineBreak)
             {
