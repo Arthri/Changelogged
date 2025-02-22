@@ -45,9 +45,9 @@ jobs:
 
             possible_directories=("$REPOSITORY_ROOT"/src/*/"$project_name")
             possible_directories_len="${#possible_directories[@]}"
-            if [[ $possible_directories_len -lt 1 ]] ; then
+            if [[ $possible_directories_len -gt 1 ]] ; then
               echo "::error::Multiple projects matched: ${possible_directories[@]}"
-            elif [[ $possible_directories_len -gt 1 ]] ; then
+            elif [[ $possible_directories_len -lt 1 ]] ; then
               echo '::error::Failed to find project.'
             fi
             if ! cd "${possible_directories[0]}" ; then
