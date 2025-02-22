@@ -76,6 +76,11 @@ if (args[0] == "build")
 
     foreach (PullRequest pullRequest in pullRequests)
     {
+        if (pullRequest.Body is null)
+        {
+            continue;
+        }
+
         comments.Section($"#{pullRequest.Number}");
         builder.Add(pullRequest.Body);
     }
