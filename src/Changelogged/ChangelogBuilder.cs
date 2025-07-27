@@ -16,19 +16,13 @@ internal sealed class ChangelogBuilder(string solutionFilter, CommentWriter comm
     private readonly IReadOnlySet<string> _projects = ProjectsLoader.FromSolutionFilter(solutionFilter);
 
     private HeadingBlock? _changelogHeading;
-    private bool _hasChangelog;
-    private bool _breakAdd;
+    private bool _wasChangelogModified;
 
     private void AddInternal(MarkdownDocument document)
     {
         foreach (Block obj in document)
         {
             VisitSectionElement(obj);
-
-            if (_breakAdd)
-            {
-                break;
-            }
 
             if (obj is HeadingBlock heading && IsChangelogHeading(heading))
             {
@@ -45,25 +39,20 @@ internal sealed class ChangelogBuilder(string solutionFilter, CommentWriter comm
         }
 
         EndSections();
-
-        if (!_hasChangelog)
-        {
-            comments.Debug("No changelog sections have been detected");
-        }
     }
 
-    public void Add(string markdown)
+    public bool Add(string markdown)
     {
         MarkdownDocument document = Markdown.Parse(markdown, Options.TrackedMarkdownPipeline);
 
         try
         {
             AddInternal(document);
+            return _wasChangelogModified;
         }
         finally
         {
-            _hasChangelog = false;
-            _breakAdd = false;
+            _wasChangelogModified = false;
         }
     }
 
@@ -73,7 +62,6 @@ internal sealed class ChangelogBuilder(string solutionFilter, CommentWriter comm
         if (ReferenceEquals(_changelogHeading, section.Heading))
         {
             _changelogHeading = null;
-            VisitChangelogSection();
             return;
         }
 
@@ -165,13 +153,8 @@ internal sealed class ChangelogBuilder(string solutionFilter, CommentWriter comm
             paragraph.LinesAfter = null;
             _ = list.Remove(block);
             changelog.Add(item);
+            _wasChangelogModified = true;
         }
-    }
-
-    private void VisitChangelogSection()
-    {
-        _hasChangelog = true;
-        _breakAdd = true;
     }
 
     public MarkdownDocument Build()

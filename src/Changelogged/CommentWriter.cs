@@ -38,6 +38,20 @@ internal sealed class CommentWriter : IDisposable
         _section = name;
     }
 
+    public void EndSection()
+    {
+        if (_section is not null)
+        {
+            _section = null;
+        }
+
+        if (_inSection)
+        {
+            _writer.WriteLine("::endgroup::");
+            _inSection = false;
+        }
+    }
+
     private void WriteInfo(string message)
     {
         TryWriteSection();
