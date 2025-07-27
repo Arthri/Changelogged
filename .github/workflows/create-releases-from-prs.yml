@@ -103,7 +103,7 @@ jobs:
           }'
                 if preceding_tag_information="$(GH_REPO="$GITHUB_REPOSITORY" gh api graphql -F owner='{owner}' -F name='{repo}' -f ref="$preceding_tag" -F query=@- <<< "$graphql_query_commit_date")" && changelog_cutoff="$(jq -re '.data.repository.ref.target.committedDate' <<< "$preceding_tag_information")" ; then
                   preceding_tag_target_oid="$(jq -re '.data.repository.ref.target.oid' <<< "$preceding_tag_information")"
-                  echo "Filtering out pull requests merged before $changelog_cutoff."
+                  echo "Filtering out pull request(s) merged before $changelog_cutoff."
                 else
                   ecbo '::error::Failed to get the commit date for '"$preceding_tag"'.'
                   exit 1
@@ -135,7 +135,7 @@ jobs:
           }'
               preceding_tag_pull_request_numbers="$(gh api graphql --paginate --slurp -F query=@- <<< "$graphql_query_preceding_tag_pull_requests" | jq -c '[.[].data.search.nodes[].number]')"
               if [[ $preceding_tag_pull_request_numbers != '[]' ]] ; then
-                echo 'Filtering out pull request associated with the preceding tag '"$(jq -r 'sort | map("#\(.)") | join(", ")' <<< "$preceding_tag_pull_request_numbers")."
+                echo 'Filtering out pull request(s) associated with the preceding tag: '"$(jq -r 'sort | map("#\(.)") | join(", ")' <<< "$preceding_tag_pull_request_numbers")."
                 if grep -qF ',' <<< "$preceding_tag_pull_request_numbers" ; then
                   echo '::warning::Multiple pull requests found associated with the preceding tag.'
                 fi
@@ -158,7 +158,7 @@ jobs:
           }'
             pull_requests_json="$(gh api graphql --paginate --slurp -F query=@- <<< "$graphql_query_pull_requests")"
             pull_requests="$(jq -c '[.[].data.search.nodes[]]' <<< "$pull_requests_json")"
-            echo "The changelog is based on pull request(s) $(jq -r '[.[].data.search.nodes[].number] + ['"$PULL_REQUEST_NUMBER"'] | sort | map("#\(.)") | join(", ")' <<< "$pull_requests_json")."
+            echo "Gathered pull request(s) $(jq -r '[.[].data.search.nodes[].number] + ['"$PULL_REQUEST_NUMBER"'] | sort | map("#\(.)") | join(", ")' <<< "$pull_requests_json")."
 
 
 
