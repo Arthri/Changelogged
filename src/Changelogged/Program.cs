@@ -90,20 +90,24 @@ if (args[0] == "build")
         }
     }
 
+    if (pullRequestsUsed.Count > 0)
     {
         comments.EndSection();
         var sb = new StringBuilder("Changelog built. The changelog is based on pull request(s) ");
 
-        if (pullRequestsUsed.Count > 0)
+        _ = sb.Append('#').Append(pullRequestsUsed[0]);
+        for (int i = 1; i < pullRequestsUsed.Count; i++)
         {
-            _ = sb.Append('#').Append(pullRequestsUsed[0]);
-            for (int i = 1; i < pullRequestsUsed.Count; i++)
-            {
-                _ = sb.Append(", #").Append(pullRequestsUsed[i]);
-            }
+            _ = sb.Append(", #").Append(pullRequestsUsed[i]);
         }
 
+        _ = sb.Append('.');
+
         comments.Info(sb.ToString());
+    }
+    else
+    {
+        comments.Info("Empty changelog. No pull requests affected the project and thus none were used.");
     }
 
     MarkdownDocument changelog = builder.Build();
