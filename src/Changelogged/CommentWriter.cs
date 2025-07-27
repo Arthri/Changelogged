@@ -54,7 +54,8 @@ internal sealed class CommentWriter : IDisposable
     public void Info(string message, SourceSpan span)
     {
         WriteInfo(message);
-        WriteSpanSpaced(span);
+        WriteSpan(span);
+        _writer.WriteLine();
     }
 
     private void WriteDebug(string message)
@@ -72,7 +73,8 @@ internal sealed class CommentWriter : IDisposable
     public void Debug(string message, SourceSpan span)
     {
         WriteDebug(message);
-        WriteSpanSpaced(span);
+        WriteSpan(span);
+        _writer.WriteLine();
     }
 
     private void WriteWarn(string message)
@@ -91,7 +93,8 @@ internal sealed class CommentWriter : IDisposable
     public void Warn(string message, SourceSpan span)
     {
         WriteWarn(message);
-        WriteSpanSpaced(span);
+        WriteSpan(span);
+        _writer.WriteLine();
     }
 
     private void WriteError(string message)
@@ -111,18 +114,13 @@ internal sealed class CommentWriter : IDisposable
     public void Error(string message, SourceSpan span)
     {
         WriteError(message);
-        WriteSpanSpaced(span);
-    }
-
-    private void WriteSpanSpaced(SourceSpan span)
-    {
-        _writer.Write(' ');
         WriteSpan(span);
+        _writer.WriteLine();
     }
 
     private void WriteSpan(SourceSpan span)
     {
-        _writer.Write("(");
+        _writer.Write(" (");
         _writer.Write(span.Start);
         _writer.Write(":");
         _writer.Write(span.End);
