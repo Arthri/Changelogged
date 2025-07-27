@@ -41,7 +41,7 @@ jobs:
           GITHUB_REPOSITORY_URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git"
 
           for project_name in ${project_names//,/$'\n'}; do
-            echo "::group::Gathering changelogs for $project_name."
+            echo "::group::Gathering pull requests for $project_name."
 
             possible_directories=("$REPOSITORY_ROOT"/src/*/"$project_name")
             possible_directories_len="${#possible_directories[@]}"
@@ -69,7 +69,7 @@ jobs:
               echo '::error::Failed to get the list of tags.'
               exit 1
             elif [[ -z $repository_refs ]] ; then
-              echo "The project has no associated tags. No changelog cutoff will be applied."
+              echo "The project has no associated tags. No pull request cutoff will be applied."
             else
               repository_tags="$(sed 's/^[a-fA-F0-9]\+[[:space:]]\+//gm' <<< "$repository_refs")"
               project_tag="v/$project_name/$project_version"
@@ -80,14 +80,14 @@ jobs:
                 echo '::error::Failed to determine the preceding tags.'
                 exit 1
               elif [[ $tags_found -eq 1 ]] ; then
-                echo "The project has no preceding tags at its current version. No changelog cutoff will be applied."
+                echo "The project has no preceding tags at its current version. No pull request cutoff will be applied."
               elif [[ $tags_found -eq 2 ]] ; then
                 preceding_tag="$(head -n1 <<< "$context_tags")"
                 if [[ $preceding_tag == $project_tag_fully_qualified ]] ; then
                   echo '::error::'"$project_tag"' conflicts with an existing tag. Consider changing the project version.'
                   exit 1
                 fi
-                echo "Using $preceding_tag's commit date as the changelog cutoff."
+                echo "Using $preceding_tag's commit date as the pull request cutoff."
 
           graphql_query_commit_date='query($name: String!, $owner: String!, $ref: String!) {
             repository(owner: $owner, name: $name) {
@@ -101,9 +101,9 @@ jobs:
               }
             }
           }'
-                if preceding_tag_information="$(GH_REPO="$GITHUB_REPOSITORY" gh api graphql -F owner='{owner}' -F name='{repo}' -f ref="$preceding_tag" -F query=@- <<< "$graphql_query_commit_date")" && changelog_cutoff="$(jq -re '.data.repository.ref.target.committedDate' <<< "$preceding_tag_information")" ; then
+                if preceding_tag_information="$(GH_REPO="$GITHUB_REPOSITORY" gh api graphql -F owner='{owner}' -F name='{repo}' -f ref="$preceding_tag" -F query=@- <<< "$graphql_query_commit_date")" && pull_request_cutoff="$(jq -re '.data.repository.ref.target.committedDate' <<< "$preceding_tag_information")" ; then
                   preceding_tag_target_oid="$(jq -re '.data.repository.ref.target.oid' <<< "$preceding_tag_information")"
-                  echo "Filtering out pull requests merged before $changelog_cutoff."
+                  echo "Filtering out pull request(s) merged before $pull_request_cutoff."
                 else
                   ecbo '::error::Failed to get the commit date for '"$preceding_tag"'.'
                   exit 1
@@ -135,7 +135,7 @@ jobs:
           }'
               preceding_tag_pull_request_numbers="$(gh api graphql --paginate --slurp -F query=@- <<< "$graphql_query_preceding_tag_pull_requests" | jq -c '[.[].data.search.nodes[].number]')"
               if [[ $preceding_tag_pull_request_numbers != '[]' ]] ; then
-                echo 'Filtering out pull request associated with the preceding tag '"$(jq -r 'sort | map("#\(.)") | join(", ")' <<< "$preceding_tag_pull_request_numbers")."
+                echo 'Filtering out pull request(s) associated with the preceding tag: '"$(jq -r 'sort | map("#\(.)") | join(", ")' <<< "$preceding_tag_pull_request_numbers")."
                 if grep -qF ',' <<< "$preceding_tag_pull_request_numbers" ; then
                   echo '::warning::Multiple pull requests found associated with the preceding tag.'
                 fi
@@ -143,7 +143,7 @@ jobs:
             fi
 
           graphql_query_pull_requests='query($endCursor: String) {
-            search(type: ISSUE, first: 100, after: $endCursor, query: "repo:'"$GITHUB_REPOSITORY"' is:pr is:merged base:master base:dev'"${changelog_cutoff:+ merged:>=$changelog_cutoff}"'") {
+            search(type: ISSUE, first: 100, after: $endCursor, query: "repo:'"$GITHUB_REPOSITORY"' is:pr is:merged base:master base:dev'"${pull_request_cutoff:+ merged:>=$pull_request_cutoff}"'") {
               nodes {
                 ... on PullRequest {
                   number
@@ -158,7 +158,6 @@ jobs:
           }'
             pull_requests_json="$(gh api graphql --paginate --slurp -F query=@- <<< "$graphql_query_pull_requests")"
             pull_requests="$(jq -c '[.[].data.search.nodes[]]' <<< "$pull_requests_json")"
-            echo "The changelog is based on pull request(s) $(jq -r '[.[].data.search.nodes[].number] + ['"$PULL_REQUEST_NUMBER"'] | sort | map("#\(.)") | join(", ")' <<< "$pull_requests_json")."
 
 
 
@@ -174,7 +173,9 @@ jobs:
               jq_query='('"$jq_query"') | map(select(.number as $n | $preceding_tag_pull_request_numbers | index($n) == null))'
             fi
 
-            jq "${jq_arguments[@]}" "$jq_query" > "./pull_requests.json"
+            filtered_pull_requests="$(jq "${jq_arguments[@]}" "$jq_query")"
+            printf '%s' "$filtered_pull_requests" > "./pull_requests.json"
+            echo "Gathered pull request(s) $(jq -r '[.[].number] | sort | map("#\(.)") | join(", ")' <<< "$filtered_pull_requests")."
 
             echo '::endgroup::'
           done
@@ -183,7 +184,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release download "v1.0.6" -p 'release.tar.gz' -O - -R "Arthri/Changelogged" | tar -xzf -
+          gh release download "v1.1.0" -p 'release.tar.gz' -O - -R "Arthri/Changelogged" | tar -xzf -
 
       - name: Build release notes
         run: |

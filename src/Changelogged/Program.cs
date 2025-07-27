@@ -1,6 +1,7 @@
 ﻿using Changelogged;
 using Markdig.Renderers.Roundtrip;
 using Markdig.Syntax;
+using System.Text;
 using System.Text.Json;
 
 using var comments = new CommentWriter();
@@ -73,6 +74,7 @@ if (args[0] == "build")
     }
 
     var builder = new ChangelogBuilder(solutionFilter, comments);
+    var pullRequestsUsed = new List<int>();
 
     foreach (PullRequest pullRequest in pullRequests)
     {
@@ -82,7 +84,30 @@ if (args[0] == "build")
         }
 
         comments.Section($"#{pullRequest.Number}");
-        builder.Add(pullRequest.Body);
+        if (builder.Add(pullRequest.Body))
+        {
+            pullRequestsUsed.Add(pullRequest.Number);
+        }
+    }
+
+    if (pullRequestsUsed.Count > 0)
+    {
+        comments.EndSection();
+        var sb = new StringBuilder("Changelog built. The changelog is based on pull request(s) ");
+
+        _ = sb.Append('#').Append(pullRequestsUsed[0]);
+        for (int i = 1; i < pullRequestsUsed.Count; i++)
+        {
+            _ = sb.Append(", #").Append(pullRequestsUsed[i]);
+        }
+
+        _ = sb.Append('.');
+
+        comments.Info(sb.ToString());
+    }
+    else
+    {
+        comments.Info("Empty changelog. No pull requests affected the project and thus none were used.");
     }
 
     MarkdownDocument changelog = builder.Build();

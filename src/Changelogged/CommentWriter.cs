@@ -6,7 +6,14 @@ internal sealed class CommentWriter : IDisposable
 {
     private readonly TextWriter _writer;
 
-    private string? _section;
+    // Empty sections are not desired, so this field stores the section
+    // that will be written to the output when any log message is written.
+    // If this field has a non-null value and it gets overwritten, then it
+    // means that the section was empty
+    private string? _deferredSection;
+    // This field tracks whether a section was previously written.
+    // GitHub Actions only allows one-level deep groups and therefore
+    // older sections must be closed before beginning a new one
     private bool _inSection;
 
     public bool HasErrors { get; private set; }
@@ -18,7 +25,7 @@ internal sealed class CommentWriter : IDisposable
 
     private void TryWriteSection()
     {
-        if (_section is not null)
+        if (_deferredSection is not null)
         {
             if (_inSection)
             {
@@ -27,15 +34,29 @@ internal sealed class CommentWriter : IDisposable
             }
 
             _writer.Write("::group::");
-            _writer.WriteLine(_section);
-            _section = null;
+            _writer.WriteLine(_deferredSection);
+            _deferredSection = null;
             _inSection = true;
         }
     }
 
     public void Section(string name)
     {
-        _section = name;
+        _deferredSection = name;
+    }
+
+    public void EndSection()
+    {
+        if (_deferredSection is not null)
+        {
+            _deferredSection = null;
+        }
+
+        if (_inSection)
+        {
+            _writer.WriteLine("::endgroup::");
+            _inSection = false;
+        }
     }
 
     private void WriteInfo(string message)
@@ -54,7 +75,8 @@ internal sealed class CommentWriter : IDisposable
     public void Info(string message, SourceSpan span)
     {
         WriteInfo(message);
-        WriteSpanSpaced(span);
+        WriteSpan(span);
+        _writer.WriteLine();
     }
 
     private void WriteDebug(string message)
@@ -72,7 +94,8 @@ internal sealed class CommentWriter : IDisposable
     public void Debug(string message, SourceSpan span)
     {
         WriteDebug(message);
-        WriteSpanSpaced(span);
+        WriteSpan(span);
+        _writer.WriteLine();
     }
 
     private void WriteWarn(string message)
@@ -91,7 +114,8 @@ internal sealed class CommentWriter : IDisposable
     public void Warn(string message, SourceSpan span)
     {
         WriteWarn(message);
-        WriteSpanSpaced(span);
+        WriteSpan(span);
+        _writer.WriteLine();
     }
 
     private void WriteError(string message)
@@ -111,18 +135,13 @@ internal sealed class CommentWriter : IDisposable
     public void Error(string message, SourceSpan span)
     {
         WriteError(message);
-        WriteSpanSpaced(span);
-    }
-
-    private void WriteSpanSpaced(SourceSpan span)
-    {
-        _writer.Write(' ');
         WriteSpan(span);
+        _writer.WriteLine();
     }
 
     private void WriteSpan(SourceSpan span)
     {
-        _writer.Write("(");
+        _writer.Write(" (");
         _writer.Write(span.Start);
         _writer.Write(":");
         _writer.Write(span.End);
@@ -133,7 +152,7 @@ internal sealed class CommentWriter : IDisposable
     {
         if (_inSection)
         {
-            _writer.Write("::endgroup::");
+            _writer.WriteLine("::endgroup::");
             _inSection = false;
         }
     }
