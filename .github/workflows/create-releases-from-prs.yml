@@ -158,7 +158,6 @@ jobs:
           }'
             pull_requests_json="$(gh api graphql --paginate --slurp -F query=@- <<< "$graphql_query_pull_requests")"
             pull_requests="$(jq -c '[.[].data.search.nodes[]]' <<< "$pull_requests_json")"
-            echo "Gathered pull request(s) $(jq -r '[.[].data.search.nodes[].number] + ['"$PULL_REQUEST_NUMBER"'] | sort | map("#\(.)") | join(", ")' <<< "$pull_requests_json")."
 
 
 
@@ -174,7 +173,9 @@ jobs:
               jq_query='('"$jq_query"') | map(select(.number as $n | $preceding_tag_pull_request_numbers | index($n) == null))'
             fi
 
-            jq "${jq_arguments[@]}" "$jq_query" > "./pull_requests.json"
+            filtered_pull_requests="$(jq "${jq_arguments[@]}" "$jq_query")"
+            printf '%s' "$filtered_pull_requests" > "./pull_requests.json"
+            echo "Gathered pull request(s) $(jq -r '[.[].number] | sort | map("#\(.)") | join(", ")' <<< "$filtered_pull_requests")."
 
             echo '::endgroup::'
           done
