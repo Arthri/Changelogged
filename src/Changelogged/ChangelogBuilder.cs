@@ -104,12 +104,14 @@ internal sealed class ChangelogBuilder(string solutionFilter, CommentWriter comm
             if (block is not ListItemBlock { LastChild: ParagraphBlock { Inline: ContainerInline paragraphInline } paragraph } item)
             {
                 comments.Error("Invalid changelog entry.", block.Span);
+                _ = list.Remove(block);
                 continue;
             }
 
             if (paragraphInline.FirstChild is not LiteralInline literal)
             {
                 comments.Error("Changelog entries must start with literal text.", paragraphInline.Span);
+                _ = list.Remove(block);
                 continue;
             }
 
@@ -137,6 +139,7 @@ internal sealed class ChangelogBuilder(string solutionFilter, CommentWriter comm
                 default:
                 {
                     comments.Error($"Unrecognized change type {changeType}", literal.Span);
+                    _ = list.Remove(block);
                     continue;
                 }
             }
@@ -160,7 +163,7 @@ internal sealed class ChangelogBuilder(string solutionFilter, CommentWriter comm
             item.LinesAfter = null;
             paragraph.LinesBefore = null;
             paragraph.LinesAfter = null;
-            _ = list.Remove(item);
+            _ = list.Remove(block);
             changelog.Add(item);
         }
     }
