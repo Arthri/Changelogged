@@ -6,7 +6,14 @@ internal sealed class CommentWriter : IDisposable
 {
     private readonly TextWriter _writer;
 
-    private string? _section;
+    // Empty sections are not desired, so this field stores the section
+    // that will be written to the output when any log message is written.
+    // If this field has a non-null value and it gets overwritten, then it
+    // means that the section was empty
+    private string? _deferredSection;
+    // This field tracks whether a section was previously written.
+    // GitHub Actions only allows one-level deep groups and therefore
+    // older sections must be closed before beginning a new one
     private bool _inSection;
 
     public bool HasErrors { get; private set; }
@@ -18,7 +25,7 @@ internal sealed class CommentWriter : IDisposable
 
     private void TryWriteSection()
     {
-        if (_section is not null)
+        if (_deferredSection is not null)
         {
             if (_inSection)
             {
@@ -27,22 +34,22 @@ internal sealed class CommentWriter : IDisposable
             }
 
             _writer.Write("::group::");
-            _writer.WriteLine(_section);
-            _section = null;
+            _writer.WriteLine(_deferredSection);
+            _deferredSection = null;
             _inSection = true;
         }
     }
 
     public void Section(string name)
     {
-        _section = name;
+        _deferredSection = name;
     }
 
     public void EndSection()
     {
-        if (_section is not null)
+        if (_deferredSection is not null)
         {
-            _section = null;
+            _deferredSection = null;
         }
 
         if (_inSection)
