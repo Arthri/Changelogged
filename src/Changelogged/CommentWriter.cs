@@ -133,7 +133,7 @@ internal sealed class CommentWriter : IDisposable
     {
         if (_inSection)
         {
-            _writer.Write("::endgroup::");
+            _writer.WriteLine("::endgroup::");
             _inSection = false;
         }
     }
