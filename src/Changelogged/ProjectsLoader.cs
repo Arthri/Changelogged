@@ -1,5 +1,6 @@
 ﻿using Microsoft.VisualStudio.SolutionPersistence.Model;
 using Microsoft.VisualStudio.SolutionPersistence.Serializer;
+using System.Collections.ObjectModel;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
@@ -20,7 +21,7 @@ internal static partial class ProjectsLoader
     /// <remarks>
     /// There must only be one solution file in the working directory.
     /// </remarks>
-    public static IReadOnlySet<string> FromSolution()
+    public static ReadOnlySet<string> FromSolution()
     {
         string? solutionFile = null;
         {
@@ -55,7 +56,7 @@ internal static partial class ProjectsLoader
     /// </summary>
     /// <param name="fileName">The name of the solution filter.</param>
     /// <returns>A list of project names.</returns>
-    public static IReadOnlySet<string> FromSolutionFilter(string fileName)
+    public static ReadOnlySet<string> FromSolutionFilter(string fileName)
     {
         SolutionFilter? filter;
         try

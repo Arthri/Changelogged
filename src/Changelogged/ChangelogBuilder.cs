@@ -2,6 +2,7 @@ using Markdig;
 using Markdig.Helpers;
 using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
+using System.Collections.ObjectModel;
 
 namespace Changelogged;
 
@@ -13,7 +14,7 @@ internal sealed class ChangelogBuilder(string solutionFilter, CommentWriter comm
     private readonly List<ListItemBlock> _newFeatures = [];
     private readonly List<ListItemBlock> _otherChanges = [];
 
-    private readonly IReadOnlySet<string> _projects = ProjectsLoader.FromSolutionFilter(solutionFilter);
+    private readonly ReadOnlySet<string> _projects = ProjectsLoader.FromSolutionFilter(solutionFilter);
 
     private HeadingBlock? _changelogHeading;
     private bool _wasChangelogModified;
