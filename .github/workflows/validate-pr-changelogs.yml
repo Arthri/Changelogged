@@ -20,6 +20,7 @@ jobs:
         with:
           sparse-checkout: |
             *.sln
+            *.slnx
           sparse-checkout-cone-mode: false
 
       - name: Download Changelogged
