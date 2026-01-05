@@ -1,6 +1,7 @@
 ﻿using Markdig;
 using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Text.RegularExpressions;
 
@@ -11,7 +12,7 @@ internal sealed partial class PRValidator(CommentWriter comments) : PRSectionedV
     private HeadingBlock? _changelogHeading;
     private bool _hasChangelog;
 
-    private static readonly IReadOnlySet<string> Projects = ProjectsLoader.FromSolution();
+    private static readonly ReadOnlySet<string> Projects = ProjectsLoader.FromSolution();
 
     private void VisitInternal(MarkdownDocument document)
     {

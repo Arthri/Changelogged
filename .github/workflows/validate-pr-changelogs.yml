@@ -20,13 +20,14 @@ jobs:
         with:
           sparse-checkout: |
             *.sln
+            *.slnx
           sparse-checkout-cone-mode: false
 
       - name: Download Changelogged
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release download "v1.1.0" -p 'release.tar.gz' -O - -R "Arthri/Changelogged" | tar -xzf -
+          gh release download "v1.2.0" -p 'release.tar.gz' -O - -R "Arthri/Changelogged" | tar -xzf -
 
       - name: Validate PR
         env:
