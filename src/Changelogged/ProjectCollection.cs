@@ -1,10 +1,18 @@
-﻿using System.Text.Json;
+﻿using Microsoft.VisualStudio.SolutionPersistence.Model;
+using Microsoft.VisualStudio.SolutionPersistence.Serializer;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 
 namespace Changelogged;
 
 internal static partial class ProjectsLoader
 {
+    private static partial class Regexes
+    {
+        [GeneratedRegex("""\.slnx?\z""")]
+        public static partial Regex SolutionExtensions { get; }
+    }
+
     /// <summary>
     /// Gets a list of project names from the solution file in the working directory.
     /// </summary>
@@ -12,40 +20,42 @@ internal static partial class ProjectsLoader
     /// <remarks>
     /// There must only be one solution file in the working directory.
     /// </remarks>
-    public static HashSet<string> FromSolution()
+    public static IReadOnlySet<string> FromSolution()
     {
-        string[] files = Directory.GetFiles(Environment.CurrentDirectory, "*.sln");
-        if (files.Length is not 1)
+        string? solutionFile = null;
         {
-            Console.Error.WriteLine("::error::The working directory must have exactly one solution file.");
-            Environment.Exit(1);
-            return null!;
+            IEnumerable<string> files = Directory
+                .EnumerateFiles(Environment.CurrentDirectory)
+                .Where(f => Regexes.SolutionExtensions.IsMatch(f));
+            using IEnumerator<string> enumerator = files.GetEnumerator();
+            if (!enumerator.MoveNext() || (solutionFile = enumerator.Current) is var _ && enumerator.MoveNext())
+            {
+                Console.Error.WriteLine("::error::The working directory must have exactly one solution file.");
+                Environment.Exit(1);
+                return null!;
+            }
         }
 
-        string solution = File.ReadAllText(files[0]);
-        MatchCollection matches = ProjectNameRegex().Matches(solution);
+        using FileStream stream = File.OpenRead(solutionFile);
+        SolutionModel solutionModel = solutionFile.EndsWith(".sln", StringComparison.OrdinalIgnoreCase)
+            ? SolutionSerializers.SlnFileV12.OpenAsync(stream, CancellationToken.None).GetAwaiter().GetResult()
+            : SolutionSerializers.SlnXml.OpenAsync(stream, CancellationToken.None).GetAwaiter().GetResult()
+            ;
 
-        var projects = new HashSet<string>(matches.Count);
-        int i = 0;
-        foreach (Match match in matches)
-        {
-            _ = projects.Add(match.Groups[1].Value);
-            i++;
-        }
-
-        // TODO: Use ReadOnlySet<T> in .NET 9
-        return projects;
+        return solutionModel
+            .SolutionProjects
+            .Select(p => p.ActualDisplayName)
+            .ToHashSet()
+            .AsReadOnly()
+            ;
     }
-
-    [GeneratedRegex("""^Project\("{[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}}"\) = "([^"]+)", "[^"]+", "{[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}}"\r?$""", RegexOptions.Multiline)]
-    private static partial Regex ProjectNameRegex();
 
     /// <summary>
     /// Gets a list of project names from the project files of the solution filter in the working directory.
     /// </summary>
     /// <param name="fileName">The name of the solution filter.</param>
     /// <returns>A list of project names.</returns>
-    public static HashSet<string> FromSolutionFilter(string fileName)
+    public static IReadOnlySet<string> FromSolutionFilter(string fileName)
     {
         SolutionFilter? filter;
         try
@@ -66,6 +76,12 @@ internal static partial class ProjectsLoader
             return null!;
         }
 
-        return filter.Solution.Projects.Select(p => Path.GetFileNameWithoutExtension(p.Replace('\\', '/'))).ToHashSet();
+        return filter
+            .Solution
+            .Projects
+            .Select(p => Path.GetFileNameWithoutExtension(p.Replace('\\', '/')))
+            .ToHashSet()
+            .AsReadOnly()
+            ;
     }
 }
