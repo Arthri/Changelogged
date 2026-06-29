@@ -195,7 +195,7 @@ jobs:
             project_name="$(basename $project_artifacts_directory)"
             echo 'Building changelog for '"$project_name."
             cd "$project_artifacts_directory"
-            PULL_REQUEST_BODIES="$(< pull_requests.json)" PROJECT_NAME="$project_name" "$REPOSITORY_ROOT/Changelogged" build
+            PULL_REQUEST_BODIES="$(< pull_requests.json)" SOLUTION_DIRECTORY="$REPOSITORY_ROOT" PROJECT_NAME="$project_name" "$REPOSITORY_ROOT/Changelogged" build
           done
 
       - name: Create or update release(s)

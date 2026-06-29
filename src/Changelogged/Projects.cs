@@ -20,13 +20,13 @@ internal static partial class Projects
         string? solutionFile = null;
         {
             IEnumerable<string> files = Directory
-                .EnumerateFiles(Environment.CurrentDirectory)
+                .EnumerateFiles(Environment.GetEnvironmentVariable("SOLUTION_DIRECTORY") ?? Environment.CurrentDirectory)
                 .Where(f => Regexes.SolutionExtensions.IsMatch(f));
             using IEnumerator<string> enumerator = files.GetEnumerator();
             if (!enumerator.MoveNext() || (solutionFile = enumerator.Current) is var _ && enumerator.MoveNext())
             {
 #pragma warning disable CA1849 // Call async methods when in an async method
-                Console.Error.WriteLine("::error::The working directory must have exactly one solution file.");
+                Console.Error.WriteLine("::error::The solution directory must have exactly one solution file.");
 #pragma warning restore CA1849 // Call async methods when in an async method
                 Environment.Exit(1);
                 return null!;
