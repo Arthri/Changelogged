@@ -19,7 +19,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           sparse-checkout: |
-            *.slnf
+            *.sln
+            *.slnx
             src/**/*.csproj
           sparse-checkout-cone-mode: false
 
@@ -184,14 +185,14 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release download "v1.3.0-alpha3" -p 'release.tar.gz' -O - -R "Arthri/Changelogged" | tar -xzf -
+          gh release download "v1.3.0-alpha4" -p 'release.tar.gz' -O - -R "Arthri/Changelogged" | tar -xzf -
 
       - name: Build release notes
         run: |
           shopt -s nullglob
 
           REPOSITORY_ROOT="$PWD"
-          for project_artifacts_directory in $PWD/artifacts/changelogs/*/; do
+          for project_artifacts_directory in $REPOSITORY_ROOT/artifacts/changelogs/*/; do
             project_name="$(basename $project_artifacts_directory)"
             echo 'Building changelog for '"$project_name."
             cd "$project_artifacts_directory"
