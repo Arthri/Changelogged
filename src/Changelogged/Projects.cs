@@ -59,7 +59,7 @@ internal static partial class Projects
 
     private static async Task<ReadOnlySet<string>> FromProjectAsync(string projectName)
     {
-        string projectPath = (await OpenSolutionAsync()).SolutionProjects.First(p => Path.GetFileName(p.FilePath) == projectName).FilePath;
+        string projectPath = (await OpenSolutionAsync()).SolutionProjects.First(p => Path.GetFileNameWithoutExtension(p.FilePath) == projectName).FilePath;
         string dotnetExecutableName = OperatingSystem.IsWindows() ? "dotnet.exe" : "dotnet";
         using var process = Process.Start(
             new ProcessStartInfo(dotnetExecutableName, ["msbuild", "-t:IncludeTransitiveProjectReferences", "-getItem:ProjectReference", projectPath])
