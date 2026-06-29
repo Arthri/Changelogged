@@ -2,11 +2,9 @@
 
 namespace Changelogged;
 
-[JsonSourceGenerationOptions(
-    PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase
-)]
 [JsonSerializable(typeof(PullRequest))]
 [JsonSerializable(typeof(List<PullRequest>))]
 [JsonSerializable(typeof(MSBuildProjectReference))]
-[JsonSerializable(typeof(MSBuildProjectReferenceCollection))]
+[JsonSerializable(typeof(MSBuildEvaluationOutput))]
+[JsonSerializable(typeof(MSBuildEvaluationOutput.MSBuildItems))]
 internal sealed partial class SourceGenerationContext : JsonSerializerContext;
