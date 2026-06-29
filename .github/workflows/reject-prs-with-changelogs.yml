@@ -19,7 +19,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release download "v1.3.0-alpha1" -p 'release.tar.gz' -O - -R "Arthri/Changelogged" | tar -xzf -
+          gh release download "v1.3.0-alpha3" -p 'release.tar.gz' -O - -R "Arthri/Changelogged" | tar -xzf -
 
       - name: Reject PRs with changelogs
         env:
