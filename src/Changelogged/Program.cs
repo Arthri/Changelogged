@@ -52,10 +52,10 @@ if (args[0] == "validate")
 
 if (args[0] == "build")
 {
-    string? solutionFilter = Environment.GetEnvironmentVariable("SOLUTION_FILTER");
-    if (solutionFilter is null or "")
+    string? projectName = Environment.GetEnvironmentVariable("PROJECT_NAME");
+    if (projectName is null or "")
     {
-        comments.Error("SOLUTION_FILTER environment variable not set.");
+        comments.Error("PROJECT_NAME environment variable not set.");
         return 1;
     }
 
@@ -73,7 +73,7 @@ if (args[0] == "build")
         return 1;
     }
 
-    var builder = new ChangelogBuilder(solutionFilter, comments);
+    var builder = new ChangelogBuilder(projectName, comments);
     var pullRequestsUsed = new List<int>();
 
     foreach (PullRequest pullRequest in pullRequests)
