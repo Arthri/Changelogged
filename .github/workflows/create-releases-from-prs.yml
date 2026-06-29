@@ -184,7 +184,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release download "v1.2.0" -p 'release.tar.gz' -O - -R "Arthri/Changelogged" | tar -xzf -
+          gh release download "v1.3.0-alpha1" -p 'release.tar.gz' -O - -R "Arthri/Changelogged" | tar -xzf -
 
       - name: Build release notes
         run: |
@@ -195,7 +195,7 @@ jobs:
             project_name="$(basename $project_artifacts_directory)"
             echo 'Building changelog for '"$project_name."
             cd "$project_artifacts_directory"
-            PULL_REQUEST_BODIES="$(< pull_requests.json)" SOLUTION_FILTER="$REPOSITORY_ROOT/$project_name.slnf" "$REPOSITORY_ROOT/Changelogged" build
+            PULL_REQUEST_BODIES="$(< pull_requests.json)" PROJECT_NAME="$project_name" "$REPOSITORY_ROOT/Changelogged" build
           done
 
       - name: Create or update release(s)

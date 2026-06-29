@@ -6,7 +6,7 @@ using System.Collections.ObjectModel;
 
 namespace Changelogged;
 
-internal sealed class ChangelogBuilder(string solutionFilter, CommentWriter comments) : PRSectionedVisitor
+internal sealed class ChangelogBuilder(string projectName, CommentWriter comments) : PRSectionedVisitor
 {
     private record struct ChangelogSection(List<MarkdownObject> Objects);
 
@@ -14,7 +14,7 @@ internal sealed class ChangelogBuilder(string solutionFilter, CommentWriter comm
     private readonly List<ListItemBlock> _newFeatures = [];
     private readonly List<ListItemBlock> _otherChanges = [];
 
-    private readonly ReadOnlySet<string> _projects = ProjectsLoader.FromSolutionFilter(solutionFilter);
+    private readonly ReadOnlySet<string> _projects = Projects.FromProject(projectName);
 
     private HeadingBlock? _changelogHeading;
     private bool _wasChangelogModified;

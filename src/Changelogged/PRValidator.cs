@@ -12,7 +12,7 @@ internal sealed partial class PRValidator(CommentWriter comments) : PRSectionedV
     private HeadingBlock? _changelogHeading;
     private bool _hasChangelog;
 
-    private static readonly ReadOnlySet<string> Projects = ProjectsLoader.FromSolution();
+    private readonly ReadOnlySet<string> _projects = Projects.FromSolution();
 
     private void VisitInternal(MarkdownDocument document)
     {
@@ -79,7 +79,7 @@ internal sealed partial class PRValidator(CommentWriter comments) : PRSectionedV
             else
             {
                 string headingInPlainText = RenderInPlainText(heading.Inline);
-                if (!Projects.Contains(headingInPlainText))
+                if (!_projects.Contains(headingInPlainText))
                 {
                     comments.Error($"Changelog contains unrecognized project `{headingInPlainText}`", heading.Inline.Span);
                 }
