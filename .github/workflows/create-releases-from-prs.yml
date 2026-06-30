@@ -21,7 +21,9 @@ jobs:
           sparse-checkout: |
             *.sln
             *.slnx
-            src/**/*.csproj
+            **/*.*proj
+            **/*.props
+            **/*.targets
           sparse-checkout-cone-mode: false
 
       - name: Gather changelogs
