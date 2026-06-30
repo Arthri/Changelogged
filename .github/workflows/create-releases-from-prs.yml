@@ -30,7 +30,7 @@ jobs:
           PULL_REQUEST_BODY: ${{ toJson(github.event.pull_request.body) }}
           PULL_REQUEST_NUMBER: ${{ toJson(github.event.pull_request.number) }}
           PULL_REQUEST_TITLE: ${{ github.event.pull_request.title }}
-          IS_DEBUGGING: ${{ runner.debug == "1" }}
+          IS_DEBUGGING: ${{ runner.debug == '1' }}
         run: |
           shopt -s nullglob
 
@@ -199,7 +199,7 @@ jobs:
 
       - name: Build release notes
         env:
-          IS_DEBUGGING: ${{ runner.debug == "1" }}
+          IS_DEBUGGING: ${{ runner.debug == '1' }}
         run: |
           shopt -s nullglob
 
