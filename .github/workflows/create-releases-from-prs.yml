@@ -30,7 +30,7 @@ jobs:
           PULL_REQUEST_BODY: ${{ toJson(github.event.pull_request.body) }}
           PULL_REQUEST_NUMBER: ${{ toJson(github.event.pull_request.number) }}
           PULL_REQUEST_TITLE: ${{ github.event.pull_request.title }}
-          IS_DEBUGGING: ${{ runner.debug == "1" }}
+          IS_DEBUGGING: ${{ runner.debug == '1' }}
         run: |
           shopt -s nullglob
 
@@ -195,11 +195,11 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release download "v2.0.0" -p 'release.tar.gz' -O - -R "Arthri/Changelogged" | tar -xzf -
+          gh release download "v2.0.1" -p 'release.tar.gz' -O - -R "Arthri/Changelogged" | tar -xzf -
 
       - name: Build release notes
         env:
-          IS_DEBUGGING: ${{ runner.debug == "1" }}
+          IS_DEBUGGING: ${{ runner.debug == '1' }}
         run: |
           shopt -s nullglob
 
