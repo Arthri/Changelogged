@@ -93,16 +93,19 @@ internal static partial class Projects
             arguments = arguments.Prepend("dotnet");
         }
 
-        using var process = Process.Start(
+        using Process process = Process.Start(
             new ProcessStartInfo(executableName, arguments)
             {
                 RedirectStandardError = true,
                 RedirectStandardInput = true,
                 RedirectStandardOutput = true,
             }
-        );
-        await process!.WaitForExitAsync();
-        return (await JsonSerializer.DeserializeAsync(process.StandardOutput.BaseStream, SourceGenerationContext.Default.MSBuildEvaluationOutput))!
+        )!;
+
+        MSBuildEvaluationOutput output = (await JsonSerializer.DeserializeAsync(process.StandardOutput.BaseStream, SourceGenerationContext.Default.MSBuildEvaluationOutput))!;
+        await process.WaitForExitAsync();
+
+        return output
             .Items
             .ProjectReference
             .Select(p => p.Filename)

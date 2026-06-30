@@ -30,6 +30,7 @@ jobs:
           PULL_REQUEST_BODY: ${{ toJson(github.event.pull_request.body) }}
           PULL_REQUEST_NUMBER: ${{ toJson(github.event.pull_request.number) }}
           PULL_REQUEST_TITLE: ${{ github.event.pull_request.title }}
+          IS_DEBUGGING: ${{ runner.debug == "1" }}
         run: |
           shopt -s nullglob
 
@@ -61,6 +62,10 @@ jobs:
               exit 1
             fi
 
+            if [[ $IS_DEBUGGING == 'true' ]] ; then
+              echo '::debug::Project version is '"$project_version"'.'
+            fi
+
             mkdir -p "$REPOSITORY_ROOT/artifacts/changelogs/$project_name" && cd $_
             echo "$project_version" > './new_version.txt'
 
@@ -76,6 +81,11 @@ jobs:
               project_tag="v/$project_name/$project_version"
               project_tag_fully_qualified="refs/tags/$project_tag"
               repository_tags_sorted="$(sort -V <<< "$repository_tags"$'\n'"$project_tag_fully_qualified")"
+
+              if [[ $IS_DEBUGGING == 'true' ]] ; then
+                echo '::debug::Fetched repository tags:'
+                echo '::debug::'"$repository_tags_sorted"
+              fi
 
               if ! context_tags="$(grep -B 1 -x -F "$project_tag_fully_qualified" <<< "$repository_tags_sorted")" || { tags_found="$(wc -l <<< "$context_tags")" && [[ $tags_found -eq 0 ]] ; } ; then
                 echo '::error::Failed to determine the preceding tags.'
@@ -188,6 +198,8 @@ jobs:
           gh release download "v2.0.0" -p 'release.tar.gz' -O - -R "Arthri/Changelogged" | tar -xzf -
 
       - name: Build release notes
+        env:
+          IS_DEBUGGING: ${{ runner.debug == "1" }}
         run: |
           shopt -s nullglob
 
@@ -196,6 +208,11 @@ jobs:
             project_name="$(basename $project_artifacts_directory)"
             echo 'Building changelog for '"$project_name."
             cd "$project_artifacts_directory"
+            
+            if [[ $IS_DEBUGGING == 'true' ]] ; then
+              echo '::debug::Pull request bodies = '"$(< pull_requests.json)"
+            fi
+
             PULL_REQUEST_BODIES="$(< pull_requests.json)" SOLUTION_DIRECTORY="$REPOSITORY_ROOT" PROJECT_NAME="$project_name" "$REPOSITORY_ROOT/Changelogged" build
           done
 
